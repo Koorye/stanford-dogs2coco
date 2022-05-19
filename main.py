@@ -50,8 +50,7 @@ def load_xml(xml_path, cats, img_id_gen, ann_id_gen):
     with open(xml_path) as f:
         xmlstr = f.read()
     res = xmltodict.parse(xmlstr)['annotation']
-    parent_path = xml_path.split('/')[-2]
-    img_path = os.path.join(parent_path, res['filename']).replace('\\', '/') + '.jpg'
+    img_path = '/'.join(xml_path.split('/')[-2:]) + '.jpg'
     img_width = int(res['size']['width'])
     img_height = int(res['size']['height'])
     img_id = img_id_gen.get()
