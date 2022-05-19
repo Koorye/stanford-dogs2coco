@@ -7,6 +7,19 @@ from tqdm import tqdm
 
 root = 'D:/Datasets/stanford-dogs'
 
+class IDGenerator(object):
+    def __init__(self, start_id=1):
+        self.start_id = start_id
+        self.id_ = start_id
+    
+    def get(self):
+        id_ = self.id_
+        self.id_ += 1
+        return id_
+    
+    def reset(self):
+        self.id_ = self.start_id
+
 def load_mat(mat_path):
     res = loadmat(mat_path)
     img_paths, labels = res['file_list'], res['labels']
@@ -26,7 +39,7 @@ def load_mat(mat_path):
     
     return cats, img_paths
 
-def load_xml(xml_path, cats, img_id):
+def load_xml(xml_path, cats, img_id_gen, ann_id_gen):
     def cat2id(cats, name):
         for cat in cats:
             if cat['name'] == name:
@@ -41,6 +54,7 @@ def load_xml(xml_path, cats, img_id):
     img_path = os.path.join(parent_path, res['filename']).replace('\\', '/') + '.jpg'
     img_width = int(res['size']['width'])
     img_height = int(res['size']['height'])
+    img_id = img_id_gen.get()
     objects = res['object']
 
     anns = []
@@ -59,6 +73,7 @@ def load_xml(xml_path, cats, img_id):
         bbox[3] = bbox[3] - bbox[1]
         area = bbox[2] * bbox[3]
         anns.append(dict(
+            id=ann_id_gen.get(),
             image_id=img_id,
             category_id=cat_id,
             bbox=bbox,
@@ -78,15 +93,16 @@ def main():
     cats, img_paths = load_mat(os.path.join(root, 'train_list.mat'))
     train_ann_paths = list(map(lambda x: x.split('.')[0], img_paths))
 
-    img_id = 1
+    img_id_gen = IDGenerator()
+    ann_id_gen = IDGenerator()
+    
     imgs, anns = [], []
     for path in tqdm(train_ann_paths):
         xml_path = os.path.join(root, 'Annotations', path).replace('\\', '/')
-        img, anns_ = load_xml(xml_path, cats, img_id)
+        img, anns_ = load_xml(xml_path, cats, img_id_gen, ann_id_gen)
         imgs.append(img)
         for ann in anns_:
             anns.append(ann)
-        img_id += 1
     
     with open('instances_train.json', 'w') as f:
         json.dump(dict(
@@ -98,15 +114,16 @@ def main():
     _, img_paths = load_mat(os.path.join(root, 'test_list.mat'))
     test_ann_paths = list(map(lambda x: x.split('.')[0], img_paths))
 
-    img_id = 1
+    img_id_gen = IDGenerator()
+    ann_id_gen = IDGenerator()
+
     imgs, anns = [], []
     for path in tqdm(test_ann_paths):
         xml_path = os.path.join(root, 'Annotations', path).replace('\\', '/')
-        img, anns_ = load_xml(xml_path, cats, img_id)
+        img, anns_ = load_xml(xml_path, cats, img_id_gen, ann_id_gen)
         imgs.append(img)
         for ann in anns_:
             anns.append(ann)
-        img_id += 1
     
     with open('instances_test.json', 'w') as f:
         json.dump(dict(
@@ -114,8 +131,6 @@ def main():
             annotations=anns,
             images=imgs,
         ), f, indent=2)
-
-
 
     
 if __name__ == '__main__':
